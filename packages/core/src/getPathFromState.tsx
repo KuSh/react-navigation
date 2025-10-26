@@ -3,7 +3,6 @@ import type {
   PartialState,
   Route,
 } from '@react-navigation/routers';
-import * as queryString from 'query-string';
 
 import { getPatternParts, type PatternPart } from './getPatternParts';
 import type { PathConfig, PathConfigMap } from './types';
@@ -252,14 +251,17 @@ export function getPathFromState<ParamList extends {}>(
     if (route.state) {
       path += '/';
     } else if (focusedParams) {
-      for (const param in focusedParams) {
-        if (focusedParams[param] === 'undefined') {
-          // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
-          delete focusedParams[param];
-        }
-      }
-
-      const query = queryString.stringify(focusedParams, { sort: false });
+      const query = new URLSearchParams(
+        Object.entries(focusedParams)
+          .map(([key, value]) => {
+            if (Array.isArray(value)) return value.map((v) => [key, v]);
+            return [[key, value]];
+          })
+          .flat()
+          .filter(([, v]) => v !== undefined)
+      )
+        .toString()
+        .replace(/\+/g, '%20'); // Replace + with %20 for spaces
 
       if (query) {
         path += `?${query}`;

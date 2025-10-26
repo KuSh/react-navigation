@@ -5,7 +5,6 @@ import type {
   PartialState,
 } from '@react-navigation/routers';
 import escape from 'escape-string-regexp';
-import * as queryString from 'query-string';
 
 import { arrayStartsWith } from './arrayStartsWith';
 import { findFocusedRoute } from './findFocusedRoute';
@@ -713,19 +712,18 @@ const parseQueryParams = (
   path: string,
   parseConfig?: Record<string, (value: string) => unknown>
 ) => {
-  const query = path.split('?')[1];
-  const params: Record<string, unknown> = queryString.parse(query);
+  const query = new URLSearchParams(path.split('?')[1]);
+  const keys = new Set(query.keys());
+  const params = Object.fromEntries(
+    Array.from(keys).map((name) => {
+      const values = query.getAll(name);
 
-  if (parseConfig) {
-    Object.keys(params).forEach((name) => {
-      if (
-        Object.hasOwnProperty.call(parseConfig, name) &&
-        typeof params[name] === 'string'
-      ) {
-        params[name] = parseConfig[name](params[name]);
-      }
-    });
-  }
+      if (values.length > 1) return [name, values];
+      if (parseConfig && Object.hasOwnProperty.call(parseConfig, name))
+        return [name, parseConfig[name](values[0])];
+      return [name, values[0]];
+    })
+  );
 
-  return Object.keys(params).length ? params : undefined;
+  return query.size ? params : undefined;
 };
